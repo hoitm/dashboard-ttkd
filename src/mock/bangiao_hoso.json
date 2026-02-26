@@ -1,0 +1,21 @@
+[
+  {
+    "label": "DASHBOARD KIỂM SOÁT",
+    "url": "/brcd/bangiao-dashboard",
+    "icon": "/icons/hoso_dieuhanh.png"
+  },
+  {
+    "label": "UPLOAD HỒ SƠ",
+    "url": "/brcd/bangiao-upload",
+    "icon": "/icons/hoso_upload.png"
+  },
+  {
+    "label": "TRA CỨU THÔNG TIN VÀ TẢI TẬP",
+    "url": "/brcd/bangiao-search",
+    "icon": "/icons/hoso_tracuu.png"
+  } 
+]
+
+
+
+ 

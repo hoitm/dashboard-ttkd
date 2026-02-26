@@ -1,0 +1,187 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { PowerBIEmbed } from 'powerbi-client-react';
+import { models }       from 'powerbi-client';
+import axios from 'axios';
+import './powerbiNew.css';
+
+import { BarChart, ChevronLeft, ChevronRight } from '@mui/icons-material';
+
+const PowerBIReport = ({ groupId }) => {
+  const [reportConfig, setReportConfig] = useState(null);
+  const [reportId, setReportId] = useState(null);
+  const [pages, setPages] = useState([]);
+  const [activePage, setActivePage] = useState('');
+  const [error, setError] = useState(null);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isFABVisible, setIsFABVisible] = useState(window.innerWidth < 768);
+
+  const reportRef = useRef(null);
+  const accessTokenRef = useRef('');
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const selectedReportId = isMobile
+      ? 'b8e41ae1-e64c-4089-9272-9ef9755a68f8' // mobile layout report
+      : '832e4653-ea41-4eb0-967c-e87539de2c7f'; // desktop layout report
+    setReportId(selectedReportId);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!reportId) return;
+
+    const fetchReportDetails = async () => {
+      try {
+        const tokenResponse = await axios.get('https://ttkd.vnptphuyen.vn:4488/api/AzureAdToken/getToken');
+        const accessToken = tokenResponse.data.accessToken;
+        accessTokenRef.current = accessToken;
+
+        const embedUrlResponse = await axios.get(
+          `https://api.powerbi.com/v1.0/myorg/groups/${groupId}/reports/${reportId}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+
+        const embedTokenResponse = await axios.post(
+          `https://api.powerbi.com/v1.0/myorg/groups/${groupId}/reports/${reportId}/GenerateToken`,
+          { accessLevel: 'View' },
+          { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } }
+        );
+
+        const isMobileReport = reportId === 'b8e41ae1-e64c-4089-9272-9ef9755a68f8';
+
+        setReportConfig({
+          type: 'report',
+          id: reportId,
+          embedUrl: embedUrlResponse.data.embedUrl,
+          accessToken: embedTokenResponse.data.token,
+          tokenType: models.TokenType.Embed,
+          settings: {
+            panes: { pageNavigation: { visible: false } },
+            background: models.BackgroundType.Transparent,
+            layoutType: isMobileReport ? models.LayoutType.MobilePortrait : models.LayoutType.Custom,
+          },
+        });
+
+        pollForPages(accessToken);
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load report.');
+      }
+    };
+
+    fetchReportDetails();
+  }, [reportId, groupId]);
+
+  const pollForPages = async (accessToken, attempts = 0) => {
+    if (attempts > 10) return;
+    try {
+      const res = await axios.get(
+        `https://api.powerbi.com/v1.0/myorg/groups/${groupId}/reports/${reportId}/pages`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      const fetchedPages = res.data.value;
+      if (fetchedPages?.length) {
+        setPages(fetchedPages);
+        setActivePage(fetchedPages[0].name);
+      } else {
+        setTimeout(() => pollForPages(accessToken, attempts + 1), 2000);
+      }
+    } catch (err) {
+      setTimeout(() => pollForPages(accessToken, attempts + 1), 2000);
+    }
+  };
+
+  const handlePageChange = async (pageName) => {
+    try {
+      if (reportRef.current) {
+        await reportRef.current.setPage(pageName);
+        setActivePage(pageName);
+      }
+    } catch (err) {
+      setError('Không thể chuyển trang.');
+    }
+  };
+
+  if (error) return <div className="text-red-500 p-4">{error}</div>;
+  if (!reportConfig || !reportId) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-20 w-20 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  const isMobileReport = reportId === 'b8e41ae1-e64c-4089-9272-9ef9755a68f8';
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      <div className={`transition-all duration-300 bg-white shadow-md h-full overflow-auto ${isSidebarVisible ? 'w-64' : 'w-12'} min-w-[3rem] max-w-[400px] relative`}>
+        <button
+          onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+          className="absolute -right-0 top-4 z-10 bg-blue-500 text-white p-1 rounded-full shadow-md hover:bg-blue-600 transition"
+          title={isSidebarVisible ? 'Ẩn menu' : 'Hiện menu'}>
+          {isSidebarVisible ? <ChevronLeft style={{ fontSize: 30 }} /> : <ChevronRight style={{ fontSize: 30 }} />}
+        </button>
+        <div className="p-4">
+          {isSidebarVisible && (
+            <>
+              <h2 className="text-lg font-semibold mb-4 text-gray-700">Trang báo cáo</h2>
+              {pages.length === 0 ? (
+                <p>Không có trang nào. Hãy thử tải lại.</p>
+              ) : (
+                pages.map(p => (
+                  <button
+                    key={p.name}
+                    onClick={() => handlePageChange(p.name)}
+                    className={`w-full text-left py-2 px-4 mb-2 rounded-lg flex items-center gap-2 ${activePage === p.name ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-blue-100 text-gray-800'}`}>
+                    <BarChart style={{ fontSize: 16 }} />
+                    <span className="truncate">{p.displayName}</span>
+                  </button>
+                ))
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col p-4 h-[calc(100vh-2rem)] max-h-screen overflow-hidden">
+        <div className="bg-white shadow-lg rounded-lg overflow-hidden h-full">
+          <PowerBIEmbed
+            embedConfig={reportConfig}
+            cssClassName="h-full w-full"
+            eventHandlers={new Map([
+              ['loaded', () => console.log('✅ Report loaded')],
+              ['error', async (event) => {
+                console.error('PowerBI Error:', event.detail);
+                try {
+                  const tokenRes = await axios.get('https://ttkd.vnptphuyen.vn:4488/api/AzureAdToken/getToken');
+                  const token = await axios.post(
+                    `https://api.powerbi.com/v1.0/myorg/groups/${groupId}/reports/${reportId}/GenerateToken`,
+                    { accessLevel: 'View' },
+                    { headers: { Authorization: `Bearer ${tokenRes.data.accessToken}` } }
+                  );
+                  setReportConfig(prev => ({ ...prev, accessToken: token.data.token }));
+                } catch (e) {
+                  setError('Không thể làm mới token PowerBI.');
+                }
+              }],
+              ['pageChanged', (event) => {
+                if (event.detail?.newPage) setActivePage(event.detail.newPage.name);
+              }]
+            ])}
+            getEmbeddedComponent={(report) => { reportRef.current = report; }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PowerBIReport;

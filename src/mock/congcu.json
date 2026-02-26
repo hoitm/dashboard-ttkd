@@ -1,0 +1,38 @@
+[
+  {
+    "label": "QR CODE ĐỘNG",
+    "url": "/thucuoc/inqr",
+    "icon": "/icons/download-qrcode.png"
+  },
+  {
+    "label": "Tải hóa đơn điện tử",
+    "url": "/thucuoc/inv",
+    "icon": "/icons/donwload-invoice.png"
+  },
+  {
+    "label": "Reset mật khẩu billing",
+    "url": "/thucuoc/reset-mk-billing",
+    "icon": "/icons/reset-billing.png"
+  },
+  {
+    "label": "Thanh toán hóa đơn",
+    "url": "/thucuoc/index",
+    "icon": "/icons/thanhtoan-hoadon.png"
+  }
+  ,
+  {
+    "label": "Thông báo cước Zalo",
+    "url": "/thucuoc/thongbaocuoc-zalo",
+    "icon": "/icons/TBCzalo.png"
+  }
+    ,
+  {
+    "label": "Xác nhận TT Zalo",
+    "url": "/thucuoc/xntt-cuoc-zalo",
+    "icon": "/icons/Xacnhantt_zalo.png"
+  }
+]
+
+
+
+ 

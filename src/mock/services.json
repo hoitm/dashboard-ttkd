@@ -1,0 +1,5 @@
+[
+  { "label": "QUẢN LÝ KỊCH BẢN", "url": "/billing/quanly-kichban","icon":"/icons/quanly-kichban.png" },
+  { "label": "Thực thi kịch bản", "url": "/billing/thuc-thi-kb","icon":"/icons/thuc-thi-kb.png" }
+  
+]

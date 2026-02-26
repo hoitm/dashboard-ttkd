@@ -1,0 +1,26 @@
+[
+  {
+    "label": "Nạp điện thoại",
+    "discount": "-3.5%",
+    "color": "from-purple-600 to-purple-400",
+    "url": "/nap-dien-thoai"
+  },
+  {
+    "label": "Hóa đơn viễn thông",
+    "discount": "-3%",
+    "color": "from-orange-500 to-yellow-400",
+    "url": "/hoa-don-vien-thong"
+  },
+  {
+    "label": "Tiền điện",
+    "discount": "-5K",
+    "color": "from-red-500 to-pink-400",
+    "url": "/tien-dien"
+  },
+  {
+    "label": "Tiền nước",
+    "discount": "-5K",
+    "color": "from-sky-500 to-blue-400",
+    "url": "/tien-nuoc"
+  }
+]

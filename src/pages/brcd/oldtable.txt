@@ -1,0 +1,645 @@
+import React, { useState, useEffect } from "react";
+import { 
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
+  Paper, Collapse, IconButton, Button, TextField, CircularProgress 
+} from "@mui/material";
+import { KeyboardArrowDown, KeyboardArrowUp, Download, Assessment, Search, Refresh } from "@mui/icons-material";
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { format } from 'date-fns';
+import viLocale from 'date-fns/locale/vi';
+import axios from 'axios';
+import * as XLSX from 'xlsx-js-style';
+
+const headerGroups = [
+  { label: "STT", span: 1, color: "from-gray-300 to-gray-400", isSticky: true, width: "60px", rowSpan: 2, startColumn: 0 },
+  { label: "Tên đơn vị, cá nhân", span: 1, color: "from-gray-300 to-gray-400", isSticky: true, width: "200px", rowSpan: 2, startColumn: 1 },
+  { label: "CẦN THỰC HIỆN", span: 4, color: "from-amber-100 to-amber-200", groupIndex: 0, startColumn: 0, endColumn: 4 },
+  { label: "ĐÃ THỰC HIỆN CHUYỂN TRẢ SAU", span: 4, color: "from-blue-100 to-blue-200", groupIndex: 1, startColumn: 4, endColumn: 8 },
+  { label: "ĐÃ THỰC HIỆN THU TIỀN GIA HẠN", span: 5, color: "from-green-100 to-green-200", groupIndex: 2, startColumn: 8, endColumn: 13 },
+  { label: "ĐÃ THỰC HIỆN NGƯNG, HUỶ", span: 5, color: "from-orange-100 to-orange-200", groupIndex: 3, startColumn: 13, endColumn: 18 },
+  { label: "CHƯA THỰC HIỆN", span: 5, color: "from-purple-100 to-purple-200", groupIndex: 4, startColumn: 18, endColumn: 23 },
+];
+
+const subHeaders = [
+  "Tổng Phiếu", "Fiber", "MyTV", "MESH",
+  "Tổng chuyển TS", "Fiber TS", "MyTV TS", "Mesh TS",
+  "Tổng phiếu gia hạn", "Fiber gia hạn", "MyTV gia hạn", "MESH gia hạn", "Tỷ lệ gia hạn",
+  "Tổng ngưng huỷ", "Ngưng Fiber", "Ngưng MyTV", "Ngưng Mesh", "Thanh lý",
+  "Tổng tỷ lệ thực hiện", "Gia hạn", "Loại phiếu 72h", "Phiếu còn 1 ngày đến hạn", "Phiếu đã quá 72h"
+];
+
+// Helper function moved to top level
+const getValues = (data) => [
+  data.tong_phieu_cth, data.Fiber, data.MyTV, data.MESH,
+  data.tong_phieu_cts, data.Fiber_cskh_ob, data.MyTV_cskh_ob, data.MESH_cskh_ob,
+  data.tong_phieu_gh, data.Fiber_cskh_gh, data.MyTV_cskh_gh, data.MESH_cskh_gh, 
+  `${data.tyle_tong_phieu_gh}%`,
+  data.tong_phieu_gh1, data.Fiber_cskh_tn, data.MyTV_cskh_tn, data.MESH_cskh_tn, 
+  data.tyle_tong_phieu_tn,
+  `${data.tyle_chua_lam}%`, data.chuagia_han, data.so_luong_tre, data.qua_1_ngay, 
+  data.qua_72_h
+];
+
+// Calculate column indices for group borders
+const groupBorders = headerGroups
+  .filter(header => header.endColumn)
+  .map(header => header.endColumn);
+
+// Move getBorderStyle outside of components
+const getBorderStyle = (colIndex) => {
+  //border-r-2 border-r-gray-400
+  return groupBorders.includes(colIndex) ? "" : "";
+};
+
+// Helper function for group background colors
+const getGroupBackgroundColor = (colIndex) => {
+  // Adjust colIndex to account for STT and Ten don vi
+  const adjustedIndex = colIndex + 0;
+  
+  const header = headerGroups.find(h => 
+    adjustedIndex >= h.startColumn && adjustedIndex < h.endColumn
+  );
+  
+  if (!header?.groupIndex && header?.groupIndex !== 0) return "";
+  
+  switch(header.groupIndex) {
+    case 0: return "bg-amber-50";
+    case 1: return "bg-blue-50";
+    case 2: return "bg-green-50";
+    case 3: return "bg-orange-50";
+    case 4: return "bg-purple-50";
+    default: return "";
+  }
+};
+
+function Row({ row, isNested = false }) {
+  const [open, setOpen] = useState(false);
+
+  const highlightCell = (value, index) => {
+    if (typeof value === 'string' && value.includes('%')) {
+      return "bg-blue-50 font-semibold";
+    }
+    if ((index === 8 && parseFloat(value) > 10) || (index === 18 && parseFloat(value) > 1)) {
+      return "text-red-600 font-bold";
+    }
+    return "";
+  };
+
+  const nestedContent = open && row.details && (
+    <TableRow>
+      <TableCell colSpan={25} className="p-0 border-0">
+        <Table size="small">
+          <TableBody>
+            {row.details.map((detail, idx) => (
+              <Row key={idx} row={detail} isNested={true} />
+            ))}
+          </TableBody>
+        </Table>
+      </TableCell>
+    </TableRow>
+  );
+
+  return (
+    <>
+      <TableRow
+        className={`
+          transition-all duration-300 hover:bg-gray-100/50
+          ${row.isGrandTotal ? "bg-green-100 font-bold" : row.isTotal ? "bg-yellow-100 font-bold" : ""}
+          ${isNested ? "bg-gray-50/80" : ""}
+        `}
+      >
+        <TableCell 
+          align="center" 
+          className={`
+            sticky left-0 z-10 bg-inherit shadow-lg font-bold p-1
+            ${isNested ? 'pl-8 border-l border-l-transparent' : ''}
+            ${getBorderStyle(0)}
+          `}
+          style={{ width: "60px", minWidth: "60px" }}
+        >
+          {!isNested && (
+            <IconButton 
+              size="small" 
+              onClick={() => setOpen(!open)} 
+              disabled={!row.details}
+              className={open ? 'transform rotate-180 transition-transform' : 'transition-transform'}
+            >
+              {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+            </IconButton>
+          )}
+          {row.stt}
+        </TableCell>
+        <TableCell 
+          className={`
+            sticky left-[60px] z-10 bg-inherit shadow-lg font-semibold pl-2
+            ${isNested ? 'border-r border-r-transparent' : ''}
+            ${getBorderStyle(1)}
+          `}
+          style={{ width: "200px", minWidth: "200px" }}
+        >
+          {isNested ? row.TEN_NV_NHANPHIEU : row.TTVT_65_1}
+        </TableCell>
+        {getValues(row).map((value, index) => (
+          <TableCell 
+            key={index} 
+            align="center" 
+            className={`
+              text-sm border border-gray-200 font-semibold 
+              ${highlightCell(value, index)}
+              ${isNested ? 'bg-gray-50/80' : ''}
+              ${getGroupBackgroundColor(index)}
+              ${getBorderStyle(index + 2)}
+            `}
+          >
+            {value}
+          </TableCell>
+        ))}
+      </TableRow>
+      {nestedContent}
+    </>
+  );
+}
+
+export default function GHTTTableFull() {
+  // Get first day of current month and current date
+  const today = new Date();
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  
+  const [fromDate, setFromDate] = useState(firstDayOfMonth);
+  const [toDate, setToDate] = useState(today);
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState([]);
+  const [error, setError] = useState(null);
+
+  // Auto fetch data on component mount
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.post('https://localhost:7299/api/AppOnline/web-dhsxkd-ghtt_thnv', {
+        tu_ngay: format(fromDate, 'dd/MM/yyyy'),
+        den_ngay: format(toDate, 'dd/MM/yyyy')
+      });
+
+      // Group data by TTVT
+      const groupedData = response.data.reduce((acc, item) => {
+        const ttvt = item.TTVT_65_1;
+        if (!acc[ttvt]) {
+          acc[ttvt] = {
+            stt: Object.keys(acc).length + 1,
+            TTVT_65_1: ttvt,
+            details: [],
+            tong_phieu_cth: 0,
+            Fiber: 0,
+            MyTV: 0,
+            MESH: 0,
+            tong_phieu_cts: 0,
+            Fiber_cskh_ob: 0,
+            MyTV_cskh_ob: 0,
+            MESH_cskh_ob: 0,
+            tyle_tong_phieu_cts: 0,
+            tong_phieu_gh: 0,
+            Fiber_cskh_gh: 0,
+            MyTV_cskh_gh: 0,
+            MESH_cskh_gh: 0,
+            tyle_tong_phieu_gh: 0,
+            tong_phieu_gh1: 0,
+            Fiber_cskh_tn: 0,
+            MyTV_cskh_tn: 0,
+            MESH_cskh_tn: 0,
+            tyle_tong_phieu_tn: 0,
+            chua_thuchien: 0,
+            tyle_chua_lam: 0,
+            chuagia_han: 0,
+            so_luong_tre: 0,
+            qua_1_ngay: 0,
+            qua_72_h: 0
+          };
+        }
+
+        // Sum up the values
+        Object.keys(item).forEach(key => {
+          if (typeof item[key] === 'number') {
+            acc[ttvt][key] += item[key];
+          }
+        });
+
+        acc[ttvt].details.push(item);
+        return acc;
+      }, {});
+
+      // Convert to array and calculate totals
+      const finalData = Object.values(groupedData);
+      
+      // Add grand total
+      const grandTotal = finalData.reduce((total, item) => {
+        Object.keys(item).forEach(key => {
+          if (typeof item[key] === 'number') {
+            total[key] = (total[key] || 0) + item[key];
+          }
+        });
+        return total;
+      }, { stt: finalData.length + 1, TTVT_65_1: "Tổng PYN", isGrandTotal: true });
+
+      setData([...finalData, grandTotal]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportToExcel = () => {
+    // Filter data to only include TTVT level (exclude nested employee data)
+    const ttvtData = data.filter(row => !row.TEN_NV_NHANPHIEU);
+
+    const wb = XLSX.utils.book_new();
+    const ws = {};
+    ws['!ref'] = `A1:Z${ttvtData.length + 3}`; // +3 for header rows and total
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 4 },  // STT
+      { wch: 25 }, // Tên đơn vị
+      ...Array(25).fill({ wch: 12 }) // Other columns
+    ];
+
+    // Add rowspan merges for STT and Ten don vi
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // STT
+      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }  // Ten don vi
+    ];
+
+    // Add header groups with colSpan
+    let colIndex = 0;
+    headerGroups.forEach((header) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+      ws[cellRef] = {
+        v: header.label,
+        t: 's',
+        s: {
+          font: { bold: true, sz: 11 },
+          fill: { fgColor: { rgb: header.color === "from-gray-300 to-gray-400" ? "E0E0E0" :
+                                  header.color === "from-yellow-300 to-yellow-400" ? "FFF9C4" :
+                                  header.color === "from-blue-300 to-blue-400" ? "BBDEFB" :
+                                  header.color === "from-green-300 to-green-400" ? "C8E6C9" :
+                                  header.color === "from-orange-300 to-orange-400" ? "FFE0B2" :
+                                  header.color === "from-purple-300 to-purple-400" ? "E1BEE7" : "FFFFFF" } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'medium', color: { rgb: "000000" } },
+            bottom: { style: 'medium', color: { rgb: "000000" } },
+            left: { style: 'medium', color: { rgb: "000000" } },
+            right: { style: 'medium', color: { rgb: "000000" } }
+          }
+        }
+      };
+
+      if (header.span > 1) {
+        ws['!merges'].push({
+          s: { r: 0, c: colIndex },
+          e: { r: 0, c: colIndex + header.span - 1 }
+        });
+      }
+      colIndex += header.span;
+    });
+
+    // Add subheaders
+    colIndex = 0;
+    ["", "", ...subHeaders].forEach((sub, idx) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 1, c: idx });
+      ws[cellRef] = {
+        v: sub,
+        t: 's',
+        s: {
+          font: { bold: true, sz: 10 },
+          fill: { fgColor: { rgb: "FFF9C4" } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: "000000" } },
+            bottom: { style: 'thin', color: { rgb: "000000" } },
+            left: { style: 'thin', color: { rgb: "000000" } },
+            right: { style: 'thin', color: { rgb: "000000" } }
+          }
+        }
+      };
+    });
+
+    // Add data rows (TTVT only)
+    ttvtData.forEach((row, rowIndex) => {
+      const rowNum = rowIndex + 2;
+
+      // Add STT
+      ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })] = {
+        v: row.stt,
+        t: 'n',
+        s: {
+          font: { bold: true, sz: 11 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: "000000" } },
+            bottom: { style: 'thin', color: { rgb: "000000" } },
+            left: { style: 'thin', color: { rgb: "000000" } },
+            right: { style: 'thin', color: { rgb: "000000" } }
+          }
+        }
+      };
+
+      // Add TTVT name
+      ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })] = {
+        v: row.TTVT_65_1,
+        t: 's',
+        s: {
+          font: { bold: true, sz: 11 },
+          alignment: { horizontal: 'left', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: "000000" } },
+            bottom: { style: 'thin', color: { rgb: "000000" } },
+            left: { style: 'thin', color: { rgb: "000000" } },
+            right: { style: 'thin', color: { rgb: "000000" } }
+          },
+          fill: {
+            fgColor: {
+              rgb: row.isGrandTotal ? "C8E6C9" : row.isTotal ? "FFF9C4" : "FFFFFF"
+            }
+          }
+        }
+      };
+
+      // Add values
+      getValues(row).forEach((value, idx) => {
+        const isPercentage = typeof value === 'string' && value.includes('%');
+        const cellRef = XLSX.utils.encode_cell({ r: rowNum, c: idx + 2 });
+        
+        ws[cellRef] = {
+          v: isPercentage ? value : Number(value),
+          t: isPercentage ? 's' : 'n',
+          s: {
+            font: {
+              bold: true,
+              sz: 11,
+              color: {
+                rgb: (isPercentage && parseFloat(value) > 10) ||
+                     (idx === 18 && parseFloat(value) > 1) ? "FF0000" : "000000"
+              }
+            },
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: {
+              top: { style: 'thin', color: { rgb: "000000" } },
+              bottom: { style: 'thin', color: { rgb: "000000" } },
+              left: { style: 'thin', color: { rgb: "000000" } },
+              right: { style: 'thin', color: { rgb: "000000" } }
+            },
+            fill: {
+              fgColor: {
+                rgb: row.isGrandTotal ? "C8E6C9" :
+                     row.isTotal ? "FFF9C4" :
+                     isPercentage ? "E3F2FD" : "FFFFFF"
+              }
+            }
+          }
+        };
+      });
+    });
+
+    // Set row heights
+    ws['!rows'] = [
+      { hpt: 30 }, // Header row height
+      { hpt: 30 }, // Subheader row height
+      ...Array(ttvtData.length).fill({ hpt: 25 }) // Data rows height
+    ];
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "GHTT Data");
+
+    // Generate Excel file
+    XLSX.writeFile(wb, "GHTT_Report.xlsx");
+  };
+
+  return (
+    <div className="p-2 sm:p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      <div className="max-w-[98%] mx-auto">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100">
+          {/* Card Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-3 sm:p-4">
+            {/* Title and Export Section */}
+            <div className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <Assessment className="text-white text-2xl sm:text-3xl" />
+                <div>
+                  <h2 className="text-white text-lg sm:text-xl font-bold">Báo Cáo Gia Hạn Thu Tiền</h2>
+                  <p className="text-blue-100 text-xs sm:text-sm">Thống kê chi tiết theo đơn vị</p>
+                </div>
+              </div>
+              <Button
+                variant="contained"
+                startIcon={<Download />}
+                onClick={exportToExcel}
+                className="w-full sm:w-auto bg-white/90 text-blue-700 hover:bg-white shadow-lg transition-all duration-300 font-semibold"
+                size="large"
+              >
+                TẢI EXCEL
+              </Button>
+            </div>
+
+            {/* Date Range and Controls Section */}
+            <div className="flex flex-col sm:flex-row gap-3 bg-white/20 p-3 sm:p-4 rounded-lg backdrop-blur-sm">
+              {/* Date Range Container */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                {/* From Date */}
+                <div className="flex-1 sm:flex-none bg-white/90 px-3 py-2 rounded-lg shadow-lg">
+                  <div className="flex items-center gap-2 mb-1 sm:mb-0">
+                    <span className="text-blue-700 font-medium text-sm whitespace-nowrap">Từ ngày:</span>
+                    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={viLocale}>
+                      <DatePicker
+                        value={fromDate}
+                        onChange={setFromDate}
+                        format="dd/MM/yyyy"
+                        className="bg-transparent flex-1"
+                        slotProps={{
+                          textField: {
+                            size: "small",
+                            fullWidth: true,
+                            sx: {
+                              backgroundColor: 'transparent',
+                              '& .MuiOutlinedInput-root': {
+                                '& fieldset': { borderColor: 'transparent' },
+                                '&:hover fieldset': { borderColor: 'rgba(59, 130, 246, 0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: 'rgb(59, 130, 246)' }
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </LocalizationProvider>
+                  </div>
+                </div>
+
+                {/* To Date */}
+                <div className="flex-1 sm:flex-none bg-white/90 px-3 py-2 rounded-lg shadow-lg">
+                  <div className="flex items-center gap-2 mb-1 sm:mb-0">
+                    <span className="text-blue-700 font-medium text-sm whitespace-nowrap">Đến ngày:</span>
+                    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={viLocale}>
+                      <DatePicker
+                        value={toDate}
+                        onChange={setToDate}
+                        format="dd/MM/yyyy"
+                        className="bg-transparent flex-1"
+                        slotProps={{
+                          textField: {
+                            size: "small",
+                            fullWidth: true,
+                            sx: {
+                              backgroundColor: 'transparent',
+                              '& .MuiOutlinedInput-root': {
+                                '& fieldset': { borderColor: 'transparent' },
+                                '&:hover fieldset': { borderColor: 'rgba(59, 130, 246, 0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: 'rgb(59, 130, 246)' }
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </LocalizationProvider>
+                  </div>
+                </div>
+              </div>
+
+              {/* Buttons Container */}
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <Button
+                  variant="contained"
+                  startIcon={<Search className="text-lg" />}
+                  onClick={fetchData}
+                  className="flex-1 sm:flex-none bg-green-500 hover:bg-green-600 shadow-lg px-4 sm:px-6 py-2 font-semibold text-sm sm:text-base transition-all duration-300"
+                  size="large"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    "XEM BÁO CÁO"
+                  )}
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<Refresh className="text-lg" />}
+                  onClick={fetchData}
+                  className="flex-1 sm:flex-none border-2 text-white border-white hover:bg-white/20 shadow-lg px-4 py-2 font-semibold text-sm sm:text-base transition-all duration-300"
+                  size="large"
+                  disabled={loading}
+                >
+                  LÀM MỚI
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card Body */}
+          <div className="p-4">
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-lg">
+                {error}
+              </div>
+            )}
+            <div className="bg-white rounded-xl overflow-hidden">
+              <TableContainer 
+                component={Paper} 
+                className="shadow-xl rounded-xl overflow-hidden border border-gray-200"
+                sx={{
+                  "&::-webkit-scrollbar": {
+                    height: "8px",
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    backgroundColor: "#f1f1f1",
+                    borderRadius: "4px",
+                  },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "#888",
+                    borderRadius: "4px",
+                    "&:hover": {
+                      backgroundColor: "#555",
+                    },
+                  },
+                }}
+              >
+                <Table size="small" className="min-w-full">
+                  <TableHead>
+                    <TableRow>
+                      {headerGroups.map((header, idx) => (
+                        <TableCell
+                          key={idx}
+                          align="center"
+                          colSpan={header.span}
+                          rowSpan={header.rowSpan || 1}
+                          className={`
+                            bg-gradient-to-r ${header.color} 
+                            text-gray-700 font-bold text-sm
+                            ${header.isSticky ? `sticky ${idx === 0 ? 'left-0' : 'left-[60px]'} z-20` : ''}
+                            ${header.rowSpan ? 'h-[72px]' : ''}
+                            ${getBorderStyle(header.startColumn)}
+                            border border-gray-300
+                          `}
+                          style={{
+                            ...(header.width ? { width: header.width, minWidth: header.width } : {}),
+                            verticalAlign: 'middle'
+                          }}
+                        >
+                          {header.label}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    <TableRow>
+                      {subHeaders.map((sub, idx) => {
+                        const header = headerGroups.find(h => 
+                          idx >= h.startColumn && idx < h.endColumn
+                        );
+                        
+                        return (
+                          <TableCell
+                            key={idx}
+                            align="center"
+                            className={`
+                              border border-gray-300 text-xs font-bold
+                              bg-gradient-to-r ${header?.color || ''}
+                              ${getBorderStyle(idx)}
+                            `}
+                          >
+                            {sub}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {data.map((row, idx) => (
+                      <Row key={idx} row={row} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </div>
+          </div>
+
+          {/* Card Footer */}
+          <div className="bg-gray-50 p-4 border-t border-gray-200">
+            <div className="flex justify-between items-center text-sm text-gray-600">
+              <div>Tổng số đơn vị: {data.length - 1}</div>
+              <div className="text-blue-600">
+                Thời gian: {format(fromDate, 'dd/MM/yyyy')} - {format(toDate, 'dd/MM/yyyy')}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

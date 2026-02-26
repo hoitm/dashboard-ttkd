@@ -1,0 +1,27 @@
+[
+   
+  {
+    "label": "Lương Phiếu GHTT",
+    "url": "/salary-ghtt",
+    "icon": "/icons/salary-ghtt.png"
+  },
+ 
+  {
+    "label": "Sản lượng ptm BRCD",
+    "url": "/BRCD",
+    "icon": "/icons/ptm-brcd.png"
+  }
+  ,
+  {
+    "label": "Mua gói DD",
+    "url": "/sl/sldt",
+    "icon": "/icons/sim_ptm.png"
+  }
+   ,
+  {
+    "label": "DKTT CHƯA GÓI",
+    "url": "/sl/sldt-chuagoi",
+    "icon": "/icons/ptm_sim_kogoi.png"
+  }
+ 
+]

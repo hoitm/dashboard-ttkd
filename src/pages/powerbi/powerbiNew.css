@@ -1,0 +1,69 @@
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+  }
+
+ /* Thêm vào file powerbi.css */
+.resizable-panel {
+    resize: horizontal;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  
+  .resizable-panel::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    cursor: col-resize;
+  }
+  
+  .resizable-panel::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 4px;
+    cursor: col-resize;
+  }
+  
+  .resizable-panel::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+    cursor: col-resize;
+  }
+
+  /* powerbi.css */
+.powerbi-container {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    position: relative;
+  }
+  
+  .powerbi-container iframe {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+/*
+    .powerbi-container {
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+    max-height: 100vh;
+    position: relative;
+  }
+  
+  .powerbi-container iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none;
+  }
+*/

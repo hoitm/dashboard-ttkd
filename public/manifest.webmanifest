@@ -1,0 +1,31 @@
+{ 
+    "name":"VNPT Phú Yên",
+    "short_name":"VNPT Phú Yên",
+    "description":"Ứng dụng nội bộ điểm tin nhanh PYN",
+    "start_url":"/",
+    "display":"standalone",
+    "background_color":"#ffffff",
+    "theme_color":"#ffffff",
+    "lang":"en",
+    "scope":"./",
+    "icons":[
+        {"src":"/pwa-192x192.png","sizes":"192x192","type":"image/png"},
+        {"src":"/pwa-512x512.png","sizes":"512x512","type":"image/png"},
+        {"src":"/pwa-512x512.png","sizes":"512x512","type":"image/png", "purpose":"any maskable"},
+        {
+            "src": "/images/icon.png",
+            "sizes": "192x192",
+            "type": "image/png",    "purpose": "any maskable"
+        }, 
+        {
+            "src": "/images/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"  ,  "purpose": "any maskable"
+        }, 
+        {
+            "src": "/images/badge.png",
+            "sizes": "72x72",
+            "type": "image/png" ,    "purpose": "any maskable"
+        }
+    ]
+    }
