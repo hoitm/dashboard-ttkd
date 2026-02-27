@@ -1,10 +1,10 @@
 import React, { useState, useRef, useContext,useEffect  } from 'react';
-import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { LogIn, ShieldCheck } from 'lucide-react';
 import { AuthContext } from '../auth/AuthProvider';
 import { useNavigate } from 'react-router-dom';
+import { login as apiLogin, verifyOtp } from '../services/authApi';
 
 const LoginWithOTP = () => {
   const [isOnebss, setIsOnebss] = useState(false);
@@ -38,14 +38,10 @@ const LoginWithOTP = () => {
     }
     setIsLoadingLogin(true); // 🔄 bắt đầu loading
     try {
-      const response = await axios.post('https://localhost:7299/api/Authentication/login', {
-        username,
-        password,
-        tapDoan: !isOnebss
-      });
+      const data = await apiLogin(username, password, !isOnebss);
 
-      if (response.data?.secretCode) {
-        localStorage.setItem('secretCode', response.data.secretCode);
+      if (data?.secretCode) {
+        localStorage.setItem('secretCode', data.secretCode);
         setStep('otp');
       } else {
         toast.error('Đăng nhập thất bại');
@@ -70,15 +66,11 @@ const LoginWithOTP = () => {
     setIsVerifyingOtp(true); // Bắt đầu loading
 
     try {
-      const response = await axios.post('https://localhost:7299/api/Authentication/verify-otp', {
-        username,
-        otp: otpCode,
-        secretCode
-      });
+      const data = await verifyOtp(username, otpCode, secretCode);
 
-      const { token, accessTokenOne, expires } = response.data;
+      const { token, accessTokenOne, expires } = data;
 
-      if (token && expires) {
+      if (token) {
         login({ token, accessTokenOne, expires });
         toast.success('Đăng nhập thành công!');
       } else {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Network, BarChart3, BadgeDollarSign, UtilityPole } from 'lucide-react';
-import axios from 'axios';
+import { getNgayPscMax, getMaxThangPhanTichDdts2025, getMaxNgayObccos } from '../services/didongApi';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -12,17 +12,8 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchPSCTram = async () => {
       try {
-        const res = await axios.post(
-          'https://ttkd.vnptphuyen.vn:4488/api/DynamicQuery/execute',
-          {
-            databaseType: 'sql',
-            functionName: 'select max(to_Date) ngay_psc from  bsc_pyn.dbo.BC_TieuDung_TongHop',
-            parameters: {},
-            isRawSql: true,
-          },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-        const fetchedDate = res.data[0]?.ngay_psc;
+        const data = await getNgayPscMax();
+        const fetchedDate = data[0]?.ngay_psc;
         if (fetchedDate) setNgayPscTram(new Date(fetchedDate));
       } catch (err) {
         console.error('Lỗi lấy ngày PSC theo trạm:', err);
@@ -31,17 +22,8 @@ export default function Dashboard() {
 
     const fetthang_cuoc = async () => {
       try {
-        const res = await axios.post(
-          'https://ttkd.vnptphuyen.vn:4488/api/DynamicQuery/execute',
-          {
-            databaseType: 'sql',
-            functionName: ' 	SELECT MAX(thang) ngay_psc FROM BSC_PYN..PHANTICH_DDTS_2025',
-            parameters: {},
-            isRawSql: true,
-          },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-        const fetchedDate = res.data[0]?.ngay_psc;
+        const data = await getMaxThangPhanTichDdts2025();
+        const fetchedDate = data[0]?.ngay_psc;
         if (fetchedDate) setthang_cuoc(fetchedDate);
       } catch (err) {
         console.error('Lỗi lấy ngày OBCCOS:', err);
@@ -50,17 +32,8 @@ export default function Dashboard() {
 
    const fetchPSCObccos = async () => {
       try {
-        const res = await axios.post(
-          'https://ttkd.vnptphuyen.vn:4488/api/DynamicQuery/execute',
-          {
-            databaseType: 'sql',
-            functionName: ' SELECT MAX(ngay_psc) ngay_psc FROM (select max(NGAYMODICHVU) ngay_psc from  bsc_pyn.dbo.AUTOCALL_OBCCOS_PROGRAM_CKN UNION  select max(NGAYMODICHVU) ngay_psc from  bsc_pyn.dbo.AUTOCALL_OBCCOS_PROGRAM_CKd) a',
-            parameters: {},
-            isRawSql: true,
-          },
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-        const fetchedDate = res.data[0]?.ngay_psc;
+        const data = await getMaxNgayObccos();
+        const fetchedDate = data[0]?.ngay_psc;
         if (fetchedDate) setNgayPscOBCCOS(new Date(fetchedDate));
       } catch (err) {
         console.error('Lỗi lấy ngày OBCCOS:', err);

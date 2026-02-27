@@ -289,6 +289,42 @@ export const getPhanTichPscDtTheoTramNew = async (date, loaiBc) => {
 };
 
 /**
+ * Lấy tháng cước phân tích di động trả sau mới nhất
+ */
+export const getMaxThangPhanTichDdts2025 = async () => {
+  try {
+    const response = await apiClient.post('DynamicQuery/execute', {
+      databaseType: 'sql',
+      functionName: 'SELECT MAX(thang) ngay_psc FROM BSC_PYN..PHANTICH_DDTS_2025',
+      parameters: {},
+      isRawSql: true,
+    });
+    return response.data;
+  } catch (error) {
+    handleError(error, 'getMaxThangPhanTichDdts2025');
+  }
+};
+
+/**
+ * Lấy ngày PSC OBCCOS mới nhất
+ */
+export const getMaxNgayObccos = async () => {
+  try {
+    const query = `SELECT MAX(ngay_psc) ngay_psc FROM (select max(NGAYMODICHVU) ngay_psc from  bsc_pyn.dbo.AUTOCALL_OBCCOS_PROGRAM_CKN UNION  select max(NGAYMODICHVU) ngay_psc from  bsc_pyn.dbo.AUTOCALL_OBCCOS_PROGRAM_CKd) a`;
+    
+    const response = await apiClient.post('DynamicQuery/execute', {
+      databaseType: 'sql',
+      functionName: query,
+      parameters: {},
+      isRawSql: true,
+    });
+    return response.data;
+  } catch (error) {
+    handleError(error, 'getMaxNgayObccos');
+  }
+};
+
+/**
  * Gọi API động với functionName tùy ý
  * @param {string} functionName - Tên function
  * @param {object} parameters - Các tham số
@@ -324,5 +360,7 @@ export default {
   getDonViBaoCaoDoanhThu,
   getPhanTichPscDtTheoTram,
   getPhanTichPscDtTheoTramNew,
+  getMaxThangPhanTichDdts2025,
+  getMaxNgayObccos,
   executeDynamicQuery,
 };
