@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getThongKeSoLuongDoanhThu } from '../../services/sanluongApi';
 import {
   Box, Typography, Grid, TextField, Card, CardContent, CircularProgress, Button, MenuItem ,FormControl
 } from '@mui/material';
@@ -40,24 +40,11 @@ const [filterDonVi, setFilterDonVi] = useState(''); // '' nghĩa là Tất cả
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(
-        'https://ttkd.vnptphuyen.vn:4488/api/DynamicQuery/execute',
-        {
-          databaseType: 'sql',
-          functionName: 'POWERBI.DBO.TEST_TM_SOLUONG_DT',
-          parameters: {
-            tu_ngay: format(fromDate, 'dd/MM/yyyy'),
-            den_ngay: format(toDate, 'dd/MM/yyyy')
-          },
-          isRawSql: false
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
+      const data = await getThongKeSoLuongDoanhThu(
+        format(fromDate, 'dd/MM/yyyy'),
+        format(toDate, 'dd/MM/yyyy')
       );
-      setData(res.data);
+      setData(data);
     } catch (error) {
       console.error('Lỗi khi gọi API:', error);
     } finally {

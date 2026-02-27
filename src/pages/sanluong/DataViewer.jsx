@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getThueBaoPhatTrien } from '../../services/sanluongApi';
 import {
   Tabs, Tab, Button, TextField, Card, CardContent, Container, Grid, Typography, Box, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
@@ -20,17 +20,8 @@ export default function DataViewer() {
 
   const fetchData = async () => {
     try {
-      const res = await axios.post('https://ttkd.vnptphuyen.vn:4488/api/DynamicQuery/execute', {
-        databaseType: 'sql',
-        functionName: `SELECT dv.TEN_DV, a.MA_TB, ma_tt, tt.TEN_TT ,a.TEN_TB  FROM css.V_DB_THUEBAO a  JOIN css.V_DB_THANHTOAN  tt ON a.THANHTOAN_ID = tt.THANHTOAN_ID JOIN ADMIN.V_DONVI dv ON tt.DONVI_ID = dv.DONVI_ID WHERE a.LOAITB_ID = @loaitb_id     AND  a.NGAY_SD >= TRY_CONVERT(DATE, @tu_ngay, 103) AND  a.NGAY_SD <= TRY_CONVERT(DATE, @den_ngay, 103)`,
-        parameters: {
-          loaitb_id: 58,
-          tu_ngay: '01/04/2025',
-          den_ngay: '20/04/2025'
-        },
-        isRawSql: true
-      });
-      setData(res.data);
+      const data = await getThueBaoPhatTrien(58, '01/04/2025', '20/04/2025');
+      setData(data);
     } catch (error) {
       console.error(error);
     }

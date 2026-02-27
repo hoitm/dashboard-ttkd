@@ -1,6 +1,6 @@
 // File: src/pages/PscReport.jsx
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { getNgayPscMaxLocal, getPhanTichPscDtTheoMauThangLocal } from '../../services/didongApi';
 import {
   Container, Typography, Button, Grid, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Fade, Tooltip,
   Switch, FormControlLabel 
@@ -105,17 +105,8 @@ const columnLabelMap = Object.fromEntries(
 
   const fetchNgayPsc = async () => {
     try {
-      const res = await axios.post(
-        'https://localhost:7299/api/DynamicQuery/execute',
-        {
-          databaseType: 'sql',
-          functionName: 'select max(to_Date) ngay_psc from  bsc_pyn.dbo.BC_TieuDung_TongHop',
-          parameters: {},
-          isRawSql: true,
-        },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      const fetchedDate = res.data[0]?.ngay_psc;
+      const data = await getNgayPscMaxLocal();
+      const fetchedDate = data[0]?.ngay_psc;
       if (fetchedDate) setNgayPsc(new Date(fetchedDate));
     } catch (error) {
       console.error('Lỗi khi lấy ngày phát sinh:', error);
@@ -126,19 +117,10 @@ const columnLabelMap = Object.fromEntries(
     if (!ngayPsc) return;
     setLoading(true);
     try {
-      const formattedDate = format(ngayPsc, 'dd/MM/yyyy');
-      const res = await axios.post(
-        'https://localhost:7299/api/DynamicQuery/execute',
-        {
-          databaseType: 'sql',
-          functionName: 'bsc_pyn.dbo.WEB_DISPLAY_PHANTICH_PSC_DT_TT_THEOMAU_2025_DM_WEB_THANG',
-          parameters: { tu_ngay: month, loai_bc: isKyTruoc ? 1 : 0 },
-          isRawSql: false,
-        },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+      // const formattedDate = format(ngayPsc, 'dd/MM/yyyy'); // Not used?
+      const data = await getPhanTichPscDtTheoMauThangLocal(month, isKyTruoc ? 1 : 0);
 
-      const rawData = res.data || [];
+      const rawData = data || [];
       const distinct = rawData.length > 0 ? {
         NGAY_PSC_HT: rawData[0].NGAY_PSC_HT,
         NGAY_PSC_TT: rawData[0].NGAY_PSC_TT

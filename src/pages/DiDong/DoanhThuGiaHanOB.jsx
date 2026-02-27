@@ -1,6 +1,5 @@
 // File: src/pages/DoanhThuGiaHanOB.jsx
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import {
   Box, Typography, Button, Grid, CircularProgress, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper, Fade
@@ -12,6 +11,7 @@ import vi from 'date-fns/locale/vi';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { CloudDownload, FileDownload, Assessment } from '@mui/icons-material';
+import { getDoanhThuGiaHanOB_Both } from '../../services/didongApi';
 
 export default function DoanhThuGiaHanOB() {
   const [fromDate, setFromDate] = useState(new Date());
@@ -44,52 +44,20 @@ export default function DoanhThuGiaHanOB() {
     'SL_CKN': 'SL CKN', 'SL_HVC': 'SL HVC'
   };
 
-  // ---------------- FETCH PHÚ YÊN ----------------
-  const fetchPY = async () => {
-    try {
-      const res = await axios.post(
-        'https://ttkd.vnptphuyen.vn:4488/api/DynamicQuery/execute',
-        {
-          databaseType: 'sql',
-          functionName: 'BSC_PYN.DBO.WEB_DOANHTHU_GIAHAN_OBCCOS',
-          parameters: {
-            tu_ngay: format(fromDate, 'dd/MM/yyyy'),
-            den_ngay: format(toDate, 'dd/MM/yyyy')
-          },
-          isRawSql: false
-        }
-      );
-      setDataPY(res.data);
-    } catch (err) {
-      console.error('PY:', err);
-    }
-  };
-
-  // ---------------- FETCH ĐẮK LẮK ----------------
-  const fetchDLK = async () => {
-    try {
-      const res = await axios.post(
-        'https://ttkd.vnptphuyen.vn:4488/api/DynamicQuery/execute',
-        {
-          databaseType: 'sql',
-          functionName: 'BSC_PYN.DBO.WEB_DOANHTHU_GIAHAN_OBCCOS_dlk',
-          parameters: {
-            tu_ngay: format(fromDate, 'dd/MM/yyyy'),
-            den_ngay: format(toDate, 'dd/MM/yyyy')
-          },
-          isRawSql: false
-        }
-      );
-      setDataDLK(res.data);
-    } catch (err) {
-      console.error('DLK:', err);
-    }
-  };
-
   const fetchAll = async () => {
     setLoading(true);
-    await Promise.all([fetchPY(), fetchDLK()]);
-    setLoading(false);
+    try {
+      const { dataPY, dataDLK } = await getDoanhThuGiaHanOB_Both(
+        format(fromDate, 'dd/MM/yyyy'),
+        format(toDate, 'dd/MM/yyyy')
+      );
+      setDataPY(dataPY);
+      setDataDLK(dataDLK);
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ---------------- EXPORT 2 SHEET ----------------

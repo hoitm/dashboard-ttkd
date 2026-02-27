@@ -23,7 +23,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import * as XLSX from 'xlsx';
-import axios from 'axios';
+import { getDoanhthuPSC2025 } from '../../services/didongApi';
  
 const areas = ['TTKD','THA', 'DTH', 'TAN', 'SCU', 'SHH', 'SHA', 'DXN', 'KHDN'];
 
@@ -48,13 +48,8 @@ export default function DoanhThuPSC() {
 
   const fetchData = async () => {
     try {
-      const response = await axios.post('https://localhost:7299/api/DynamicQuery/execute', {
-        databaseType: 'sql',
-        functionName: 'bsc_pyn.dbo.WEB_DISPLAY_PHANTICH_DDTS_THEOMAU_2025_DM_WEB',
-        parameters: { thang: month },
-        isRawSql: false,
-      });
-      setData(response.data);
+      const data = await getDoanhthuPSC2025(month);
+      setData(data);
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu:', error);
     }
