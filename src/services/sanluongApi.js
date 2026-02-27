@@ -64,3 +64,25 @@ export const getChiTietSoLuong = async (hrm_code, fromDate, toDate) => {
   }
 };
 
+/**
+ * Lấy danh sách tổng hợp số lượng chưa lên gói
+ * @param {string} fromDate - Từ ngày (dd/MM/yyyy)
+ * @param {string} toDate - Đến ngày (dd/MM/yyyy)
+ */
+export const getSoLuongChuaLenGoiTongHop = async (fromDate, toDate) => {
+  try {
+    const response = await apiClient.post('/DynamicQuery/execute', {
+      databaseType: 'sql',
+      functionName: 'POWERBI.DBO.TEST_SOLUONG_CHUALEN_GOI_TONGHOP',
+      parameters: {
+        tu_ngay: fromDate,
+        den_ngay: toDate,
+      },
+      isRawSql: false,
+    });
+    return response.data;
+  } catch (error) {
+    handleError(error, 'getSoLuongChuaLenGoiTongHop');
+  }
+};
+
